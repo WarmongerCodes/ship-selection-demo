@@ -8,10 +8,16 @@ using UnityEngine;
 public static class Utils
 {
     private static ShipDataCollection _shipCollectionData;
-    
+
+    private static readonly string PersistentSchemaPath = Application.streamingAssetsPath + "/schema";
+    private static readonly string PersistentDataPath = Application.persistentDataPath + "/bin";
+
     public static void InitializeGameData()
     {
-        if (_shipCollectionData == null) LoadAllShipResources();
+        if (_shipCollectionData == null)
+        {
+            LoadAllShipResources();
+        }
     }
 
     /// <summary>
@@ -50,9 +56,16 @@ public static class Utils
         }
         catch (Exception e)
         {
-            Console.WriteLine(e);
+            Console.WriteLine(e.StackTrace);
             throw;
         }
+    }
+
+    private static void LoadFirstTime()
+    {
+        var schema = File.ReadAllText(PersistentSchemaPath);
+        PlayerPrefs.SetString("ShipCollectionData", schema);
+        File.WriteAllText(PersistentDataPath, schema);
     }
 
     /// <summary>
@@ -60,17 +73,15 @@ public static class Utils
     /// </summary>
     private static void LoadAllShipResources()
     {
+        var stackAvail = PlayerPrefs.HasKey("ShipCollectionData");
+        if (stackAvail == false)
+        {
+            LoadFirstTime();
+        }
+
         try
         {
-            var pathInternal = Application.dataPath + "/Resources/Saves/data";
-            if (!File.Exists(pathInternal))
-            {
-                File.CreateText(pathInternal);
-            }
-            
-            var post = PlayerPrefs.HasKey("ShipCollectionData") ? "Saves/data" : "def";
-            var path = Application.dataPath + "/Resources/" + post;
-            var dataJson = File.ReadAllText(path);
+            var dataJson = File.ReadAllText(PersistentDataPath);
             var load = JsonUtility.FromJson<ShipDataCollection>(dataJson);
 
             _shipCollectionData = load;
@@ -78,7 +89,7 @@ public static class Utils
         }
         catch (Exception e)
         {
-            Console.WriteLine(e);
+            Console.WriteLine(e.StackTrace);
             throw;
         }
     }
@@ -90,9 +101,8 @@ public static class Utils
     {
         try
         {
-            var path = $"{Application.dataPath}/Resources/Saves/data";
             var dataJson = JsonUtility.ToJson(_shipCollectionData);
-            File.WriteAllText(path, dataJson);
+            File.WriteAllText(PersistentDataPath, dataJson);
 
             PlayerPrefs.SetString("ShipCollectionData", dataJson);
         }
